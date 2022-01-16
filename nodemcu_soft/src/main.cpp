@@ -6,9 +6,9 @@
 #include <ESP8266WiFi.h>
 #include <Hash.h>
 
-const char *ssid = "****";
-const char *pass = "*****";
-const char *server_host = "socialify.io";
+const char *ssid = "The_Most_Dangerous";
+const char *pass = "TMDno100758492";
+const char *server_host = "192.168.8.151";
 const uint16_t server_port = 83;
 
 #define DHTPIN 4      // what digital pin the DHT22 is conected to
@@ -16,6 +16,25 @@ const uint16_t server_port = 83;
 
 DHT dht(DHTPIN, DHTTYPE);
 websockets::WebsocketsClient socket;
+
+void connectToWiFi() {
+  WiFi.hostname("ESP8266-do-pogody");
+  WiFi.begin(ssid, pass);
+
+  while(WiFi.status() != WL_CONNECTED)
+  {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println("");
+  Serial.println("WiFi connected");
+  Serial.println('\n');
+  Serial.println("Connection established!");
+  Serial.print("IP address:\t");
+  Serial.println(WiFi.localIP());
+
+}
 
 void onMessageCallback(websockets::WebsocketsMessage message) {
     Serial.print("Got Message: ");
@@ -39,22 +58,8 @@ void setup()
   delay(1000);
   Serial.begin(9600);
   Serial.setTimeout(2000);
-  
-  WiFi.hostname("ESP8266-do-pogody");
-  WiFi.begin(ssid, pass);
 
-  while(WiFi.status() != WL_CONNECTED)
-  {
-    delay(500);
-    Serial.print(".");
-  }
-
-  Serial.println("");
-  Serial.println("WiFi connected");
-  Serial.println('\n');
-  Serial.println("Connection established!");
-  Serial.print("IP address:\t");
-  Serial.println(WiFi.localIP());
+  connectToWiFi();
 
   // Wait for serial to initialize.
   while (!Serial)
@@ -81,10 +86,6 @@ void setup()
 int timeSinceLastRead = 0;
 void loop()
 {
-  if(socket.available()) {
-    socket.poll();
-  }
-
   // Report every 2 seconds.
   if (timeSinceLastRead > 2000)
   {
@@ -110,7 +111,21 @@ void loop()
     Serial.print("C");
     Serial.print("\n");
 
-    socket.send("{\"humidity\": " + String(h) + ", \"temperature\": " + String(t) + "}");
+    if(WiFi.status() == WL_CONNECTED) {
+      if(socket.available()) {
+        socket.send("{\"humidity\": " + String(h) + ", \"temperature\": " + String(t) + "}");
+        socket.poll();
+      } else {
+        bool connected = socket.connect(server_host, server_port, "/receiveWsData/");
+        if(connected) {
+            Serial.println("Connecetd!");
+        } else {
+            Serial.println("Not Connected!");
+        }
+      }
+    } else {
+      connectToWiFi();
+    }
 
     timeSinceLastRead = 0;
   }
